@@ -17,7 +17,8 @@ sab_mpa <- all_mpas %>%
 
 # load sightings and prepare sightings data
 
-all_sightings <- read_csv(here("Joy_cetaceans_Feb2024.csv")) 
+all_sightings <- read_csv(here("Joy_cetaceans_Feb2024.csv")) %>% 
+  mutate(species = as_factor(COMMONNAME))
 
 species_groups <- read_csv("species_groups.csv")
 
@@ -38,7 +39,18 @@ sightings_sab_sf <- st_join(sightings_sf, sab_mpa) %>%
 # summarize by species
 
 sightings_sab <- sightings_sab_sf %>% 
-  group_by(species) %>% 
+  group_by(species_name) %>% 
+  summarize(count = n()) %>% 
+  st_drop_geometry()
+
+# summarize by ID certainty
+
+sightings_all_cert <- sightings_sf %>% 
+  group_by(IDREL_CD) %>% 
+  summarize(count = n())
+
+sightings_sab_cert <- sightings_sab_sf %>% 
+  group_by(IDREL_CD) %>% 
   summarize(count = n())
 
 

@@ -5,10 +5,12 @@
 ### Set up
 
 # load packages
-pacman::p_load(here, tidyverse, sf)
+pacman::p_load(here, tidyverse, sf, RColorBrewer)
 
 # read in saved bathymetry
-bf <- readRDS("bathymetry.RDS")
+bf <- readRDS("bathymetry.RDS") %>% 
+  filter(z>-3500) %>% 
+  mutate(z_adj = ifelse(z >= 1000, 0, z))
 
 # load MPA shapefile
 all_mpas <- read_sf(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_2\shapefiles\ProtectedAreas\DFO\OA_MPAs\EastCan_MPAS.shp)") %>% 
@@ -56,6 +58,7 @@ species_groups<-read_csv("species_groups.csv")
 all_sightings <- all_sightings %>% 
   left_join(species_groups, by = "species")
 
+
 # create spatial feature of sighting coordinates
 
 sightings_sf <- st_as_sf(all_sightings, 
@@ -63,21 +66,18 @@ sightings_sf <- st_as_sf(all_sightings,
                          crs = st_crs(4326))
 
 
-
-
 # filter by group for mapping
 
-plot_sightings<-all_sightings %>% 
-  filter(group == "baleen")
-
+plot_sightings <- sightings_sf %>% 
+  filter(group == "unknown")
 
 ### create map
 
 map<-ggplot() +
   
   ## add bathymetry
-  geom_raster(data=bf, aes(x=x, y=y, fill=z)) +
-  scale_fill_distiller(palette="Blues",guide = 'none') +
+  geom_raster(data = bf, aes(x = x, y = y, fill = z_adj)) +
+  scale_fill_distiller(palette = "Blues", guide = 'none') +
   
   # add land region
   #geom_polygon(data = reg, aes(x = long, y = lat, group = group), 
@@ -87,19 +87,25 @@ map<-ggplot() +
   geom_sf(data = canada, color=NA, fill="grey60") +
   
   # add mpa 
-  geom_sf(data = sab_mpa, col = "red", fill = "red", alpha = 0.3, linewidth = 0.4) +
-  
-  #geom_point(data = plot_sightings, aes(x = LONGITUDE, y = LATITUDE, colour = COMMONNAME),
-   #          shape=16) +
+  geom_sf(data = sab_mpa, 
+          col = "darkblue", 
+          fill = "darkblue", 
+          alpha = 0.2, 
+          linewidth = 0.25) +
   
   # add box
-  geom_sf(data = polygon, col = "black", fill = NA, linewidth = 1) +
+  geom_sf(data = polygon, col = "black", fill = NA, linewidth = 0.5) +
   
-  geom_sf(data = sightings_sf, aes(colour = COMMONNAME),
-             shape=16) +
+  # add sightings
+  geom_sf(data = plot_sightings, aes(colour = species_name),
+             shape = 16, size = 1) +
+  
+  # set colors
+  scale_colour_brewer("Species", palette = "Set1") +
+  #scale_colour_brewer("Species", palette = "Dark2") +
   
   # set area
-  coord_sf(xlim = c(-62, -56), ylim = c(44.1, 48.1), expand = FALSE) +
+  coord_sf(xlim = c(-62, -56), ylim = c(44.4, 47.8), expand = FALSE) +
   
   # format axes
   ylab("") + 
@@ -108,6 +114,12 @@ map<-ggplot() +
         panel.grid.minor = element_blank(),
         text = element_text(size = 9),
         legend.key = element_rect(fill = NA),
-        plot.margin = margin(0.2,0.1,0.2,0.1,"cm"))
+        plot.margin = margin(0.2,0.05,0.05,0.05,"in"))
   
-map
+#ggsave(here("output_maps", "baleen_whale_sightings_map.png"), map, width = 6.5, height = 3.5, units = "in", dpi = 300)
+
+#ggsave(here("output_maps", "large_odontocete_sightings_map.png"), map, width = 6.5, height = 3.5, units = "in", dpi = 300)
+
+#ggsave(here("output_maps", "small_odontocete_sightings_map.png"), map, width = 6.5, height = 3.4, units = "in", dpi = 300)
+
+ggsave(here("output_maps", "unknown_sightings_map.png"), map, width = 6.5, height = 3.5, units = "in", dpi = 300)
